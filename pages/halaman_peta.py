@@ -23,21 +23,35 @@ def _get_genai_client():
 
 
 @st.cache_data(show_spinner=False)
+def _fetch_gemini_data(judul_lagu: str, asal_daerah: str) -> str:
+    """Fungsi murni pemanggil API. Jika error, biarkan crash agar TIDAK di-cache oleh Streamlit."""
+    client = _get_genai_client()
+    
+    # Menggunakan gemini-2.5-flash standar yang lebih tangguh menahan beban high-demand
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=(
+            f"Berikan informasi singkat, menarik, dan edukatif tentang lagu daerah "
+            f"'{judul_lagu}' dari {asal_daerah}. Jelaskan makna lagu "
+            f"dan nilai budayanya. Gunakan bahasa yang santai namun informatif."
+        ),
+    )
+    return response.text
+
+
 def get_song_info_from_gemini(judul_lagu: str, asal_daerah: str) -> str:
-    """Ambil deskripsi lagu dari Gemini, dicache di memori server Streamlit."""
+    """Wrapper fungsi untuk menangkap error tanpa merusak cache memori Streamlit."""
     try:
-        client = _get_genai_client()
-        response = client.models.generate_content(
-            model="gemini-2.5-flash-lite",
-            contents=(
-                f"Berikan informasi singkat, menarik, dan edukatif tentang lagu daerah "
-                f"'{judul_lagu}' dari {asal_daerah}. Jelaskan makna lagu "
-                f"dan nilai budayanya. Gunakan bahasa yang santai namun informatif."
-            ),
-        )
-        return response.text
+        # Jika berhasil, teks deskripsi akan di-cache selamanya
+        return _fetch_gemini_data(judul_lagu, asal_daerah)
     except Exception as e:
-        return f"Terjadi kendala saat memuat deskripsi: {e}"
+        # Jika gagal (seperti 503), teks peringatan ini HANYA tampil sementara dan TIDAK di-cache.
+        return (
+            f"⚠️ **Server Gemini sedang penuh (503).**\n\n"
+            f"Permintaan gagal karena lonjakan traffic di server Google. "
+            f"Silakan coba klik kembali tombol lagu ini atau lagu lain untuk memicu ulang sistem.\n\n"
+            f"*Detail Error: {e}*"
+        )
 
 
 @st.cache_data(show_spinner=False)

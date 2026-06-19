@@ -4,7 +4,7 @@ streamlit-folium
 numpy
 pandas
 librosa
-pyAudioAnalysis
+git+https://github.com/tyiannak/pyAudioAnalysis.git
 xgboost
 joblib
 matplotlib

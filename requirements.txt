@@ -1,7 +1,12 @@
 streamlit
 folium
 streamlit-folium
+numpy
+pandas
+librosa
+pyAudioAnalysis
 xgboost
-scikit-learn
+joblib
+matplotlib
 google-genai
 python-dotenv

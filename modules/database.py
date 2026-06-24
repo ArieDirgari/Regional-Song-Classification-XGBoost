@@ -2,8 +2,8 @@ import sqlite3
 import pandas as pd
 
 def get_songs_by_region(region_name):
-    conn = sqlite3.connect('data/musicdata.db')
-    query = "SELECT artist, judul_Lagu FROM songs WHERE provinsi = ?"
+    conn = sqlite3.connect('data/music_data.db')
+    query = "SELECT artists, judul_Lagu, youtube_url FROM songs WHERE provinsi = ?"
     df = pd.read_sql(query, conn, params=(region_name,))
     conn.close()
     return df

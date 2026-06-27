@@ -9,7 +9,6 @@ from modules.processor import process_audio
 from modules.database import get_songs_by_region
 from dotenv import load_dotenv
 
-# --- KONFIGURASI AWAL (Harus berada di paling atas script) ---
 load_dotenv()
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 st.set_page_config(page_title="Dashboard Prediksi & Eksplorasi Lagu Daerah", layout="wide")
@@ -70,7 +69,6 @@ def get_song_info_from_gemini(judul_lagu: str, asal_daerah: str) -> str:
                 "💡 *Solusi:* Silakan tunggu sekitar 10–30 detik, lalu klik ulang tombol **'Pilih Lagu'** untuk mencoba kembali."
             )
         else:
-            # Penanganan untuk error di luar 503 (misal: API Key salah, internet putus, dll)
             return (
                 f"❌ **Gagal Memuat Informasi Budaya.**\n\n"
                 f"Terjadi kesalahan sistem saat menghubungi sistem Google GenAI.\n\n"
@@ -107,7 +105,7 @@ defaults = {
     "feature_dataframe": None,
     "selected_song_info": None,
     "current_region": None,
-    "is_processing": False  # Mengontrol status disabilitas tombol klasifikasi
+    "is_processing": False
 }
 for key, val in defaults.items():
     if key not in st.session_state:
@@ -117,7 +115,6 @@ for key, val in defaults.items():
 # HELPER UI & LOGIKA PETA
 # ==========================================
 def _build_dashboard_map(geojson_data: dict, current_region: str) -> folium.Map:
-    # Peta dikunci agar fokus eksplorasi tertuju pada interaksi klik daerah
     m = folium.Map(
         location=[-2.5, 118], 
         zoom_start=5, 
@@ -199,7 +196,6 @@ if "peta_dashboard_utama" in st.session_state and st.session_state["peta_dashboa
 # BAGIAN 1: PANEL PREDIKSI (LAYOUT COMPACT KIRI-KANAN)
 # ─────────────────────────────────────────────────────────────────────────
 
-# Membuat layout 2 kolom dengan rasio 1.2 : 1 agar kolom input sedikit lebih luas
 col_input, col_hasil = st.columns([1.2, 1], gap="large")
 
 # 📥 KOLOM 1: INPUT AUDIO & TOMBOL
@@ -208,26 +204,27 @@ with col_input:
     uploaded_file = st.file_uploader(
         "Unggah file audio (.wav / .mp3)", 
         type=["wav", "mp3"],
-        label_visibility="collapsed" # Menyembunyikan label bawaan agar lebih clean
+        label_visibility="collapsed"
     )
     
     if uploaded_file is not None:
-        # Menampilkan Audio Player bawaan
         st.audio(uploaded_file)
         
-        # Cek apakah ada file baru yang diunggah untuk reset hasil prediksi lama
         if uploaded_file.name != st.session_state.last_uploaded_file:
             st.session_state.prediction_result = None
             st.session_state.last_uploaded_file = uploaded_file.name
             st.rerun()
             
-        # Tombol Jalankan Klasifikasi (Hanya muncul jika file sudah diunggah)
-        if st.button("🚀 Jalankan Klasifikasi", type="primary", use_container_width=True):
+        if st.button(
+            "🚀 Jalankan Klasifikasi", 
+            type="primary", 
+            use_container_width=True,
+            disabled=st.session_state.is_processing
+        ):
             st.session_state.is_processing = True
             st.rerun()
 
 
-# ⚙️ LOGIKA PEMROSESAN BACKGROUND (Dijalankan saat tombol diklik)
 if st.session_state.is_processing and st.session_state.prediction_result is None:
     with st.spinner("Menganalisis karakteristik audio dengan XGBoost..."):
         features = process_audio(uploaded_file)
@@ -270,16 +267,13 @@ with col_hasil:
         # Keadaan Standby (Sebelum Tombol Klasifikasi Diklik)
         st.info("💡 **Petunjuk:**\nSilakan unggah file musik di kolom kiri, lalu klik **Jalankan Klasifikasi** untuk melihat hasil prediksi XGBoost.")
 
-# Jarak pemisah sebelum masuk ke peta bawah
 st.markdown("---")
 # ─────────────────────────────────────────────────────────────────────────
-# BAGIAN 2: PETA UTAMA (TENGAH - FIXED CONTAINER ANTI-LOMPAT)
+# BAGIAN 2: PETA UTAMA
 # ─────────────────────────────────────────────────────────────────────────
 st.markdown("##### 🗺️ Peta Geografis Lagu Daerah")
 m_full = _build_dashboard_map(geojson_data, st.session_state.current_region)
 
-# 💡 SOLUSI: Mengunci ruang peta dengan st.container bertinggi statis & tanpa border
-# Tinggi container (415) dibuat sedikit lebih besar dari tinggi peta (400) agar tidak muncul scrollbar
 with st.container(height=415, border=False):
     st_folium(
         m_full,
@@ -319,9 +313,6 @@ if st.session_state.current_region:
                 curr_page = st.session_state[page_key]
                 df_page = df_db.iloc[(curr_page - 1) * rows_per_page : curr_page * rows_per_page]
                 
-                # Render Loop Komponen Card
-                # --- UPDATE BAGIAN 3: Render Loop Komponen Card Lagu Asli ---
-                # Menggunakan iterrows agar bisa mengambil data 'artists' dan 'youtube_url' per baris
                 for _, row in df_page.iterrows():
                     song = row[title_col]
                     artist = row['artists'] if 'artists' in row.index else "Unknown Artist"
